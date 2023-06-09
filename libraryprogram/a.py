@@ -2,6 +2,7 @@ import sys
 import re
 import mysql.connector
 from PyQt5.QtCore import pyqtSignal
+from PyQt5.QtWidgets import QTableWidget, QTableWidgetItem
 from PyQt5.QtWidgets import QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QLineEdit, QPushButton, QMessageBox, QListWidget, QListWidgetItem, QDialog, QComboBox, QInputDialog
 from PyQt5.QtGui import QPixmap
 
@@ -138,7 +139,7 @@ class StudentWindow(QMainWindow):
     def __init__(self, eposta):
         super().__init__()
         self.setWindowTitle("Öğrenci Paneli")
-        self.resize(500, 400)
+        self.resize(600, 400)
 
         self.eposta = eposta
 
@@ -146,6 +147,11 @@ class StudentWindow(QMainWindow):
 
         label_welcome = QLabel(f"Hoş geldiniz, {self.eposta}!")
         layout.addWidget(label_welcome)
+
+        self.table_widget = QTableWidget()
+        self.table_widget.setColumnCount(4)
+        self.table_widget.setHorizontalHeaderLabels(["Kitap Adı", "Yazar", "Yayın Tarihi", "Kategori"])
+        layout.addWidget(self.table_widget)
 
         button_borrow = QPushButton("Kitap Ödünç Al")
         button_borrow.clicked.connect(self.borrowBook)
@@ -163,6 +169,31 @@ class StudentWindow(QMainWindow):
         central_widget.setLayout(layout)
         self.setCentralWidget(central_widget)
 
+        self.refreshBookList()
+
+    def refreshBookList(self):
+        connection = mysql.connector.connect(
+            host="localhost",
+            user="root",
+            password="Efehan33!",
+            database="libraryprogram"
+        )
+        cursor = connection.cursor()
+
+        query = "SELECT * FROM kitaplar"
+        cursor.execute(query)
+        result = cursor.fetchall()
+
+        self.table_widget.setRowCount(len(result))
+
+        for row, book in enumerate(result):
+            for col, data in enumerate(book[1:]):
+                item = QTableWidgetItem(str(data))
+                self.table_widget.setItem(row, col, item)
+
+        cursor.close()
+        connection.close()
+
     def borrowBook(self):
         connection = mysql.connector.connect(
             host="localhost",
@@ -178,7 +209,7 @@ class StudentWindow(QMainWindow):
 
         if result:
             book_names = [book[1] for book in result]
-            book_name, ok = QInputDialog.getItem(self, "Kitap Seç", "Ödünç almak istediğiniz kitabı seçin:", book_names, editable=False)
+            book_name, ok = QInputDialog.getItem(self, "Kitap Seç", "Ödünç almak istediğiniz kitab seçin:", book_names, editable=False)
             if ok and book_name:
                 book_id = None
                 for book in result:
@@ -205,45 +236,46 @@ class StudentWindow(QMainWindow):
         connection.close()
 
     def returnBook(self):
-        connection = mysql.connector.connect(
-            host="localhost",
-            user="root",
-            password="Efehan33!",
-            database="libraryprogram"
-        )
-        cursor = connection.cursor()
+     connection = mysql.connector.connect(
+         host="localhost",
+         user="root",
+         password="Efehan33!",
+         database="libraryprogram"
+     )
+     cursor = connection.cursor()
 
-        query = "SELECT kitaplar.ad, kiralama.id FROM kitaplar INNER JOIN kiralama ON kitaplar.id = kiralama.kitap_id WHERE kitaplar.durum = 'kiralandi' AND kiralama.kullanici_id = %s"
-        params = (self.getUserID(),)
-        cursor.execute(query, params)
-        result = cursor.fetchall()
+     query = "SELECT kitaplar.ad, kiralama.id FROM kitaplar INNER JOIN kiralama ON kitaplar.id = kiralama.kitap_id WHERE kitaplar.durum = 'kiralandi' AND kiralama.kullanici_id = %s"
+     params = (self.getUserID(),)
+     cursor.execute(query, params)
+     result = cursor.fetchall()
 
-        if result:
-            book_ids = [book[1] for book in result]
-            book_name, ok = QInputDialog.getItem(self, "Kitap Seç", "İade etmek istediğiniz kitabı seçin:", [book[0] for book in result], editable=False)
-            if ok and book_name:
-                book_id = None
-                for book in result:
-                    if book[0] == book_name:
-                        book_id = book[1]
-                        break
+     if result:
+        book_ids = [book[1] for book in result]
+        book_names = [book[0] for book in result]
+        book_name, ok = QInputDialog.getItem(self, "Kitap Seç", "İade etmek istediğiniz kitabı seçin:", book_names, editable=False)
+        if ok and book_name:
+            book_id = None
+            for book in result:
+                if book[0] == book_name:
+                    book_id = book[1]
+                    break
 
-                query = "DELETE FROM kiralama WHERE id = %s"
-                cursor.execute(query, (book_id,))
+            query = "DELETE FROM kiralama WHERE id = %s"
+            cursor.execute(query, (book_id,))
 
-                query = "UPDATE kitaplar SET durum = 'kiralanmadi' WHERE id = %s"
-                cursor.execute(query, (book_id,))
+            query = "UPDATE kitaplar SET durum = 'kiralanmadi' WHERE id = %s"
+            cursor.execute(query, (book_id,))
 
-                connection.commit()
+            connection.commit()
 
-                QMessageBox.information(self, "Başarılı", "Kitap iade edildi!")
-            else:
-                QMessageBox.warning(self, "Hata", "Kitap seçilmedi!")
+            QMessageBox.information(self, "Başarılı", "Kitap iade edildi!")
         else:
-            QMessageBox.warning(self, "Hata", "İade edilecek kitap bulunamadı!")
+            QMessageBox.warning(self, "Hata", "Kitap seçilmedi!")
+     else:
+        QMessageBox.warning(self, "Hata", "İade edilecek kitap bulunamadı!")
 
-        cursor.close()
-        connection.close()
+     cursor.close()
+     connection.close()
 
     def getUserID(self):
         connection = mysql.connector.connect(
@@ -318,7 +350,7 @@ class TeacherWindow(QMainWindow):
         )
         cursor = connection.cursor()
 
-        query = "SELECT * FROM kitaplar"
+        query = "DELETE FROM kitaplar WHERE id = %s"
         cursor.execute(query)
         result = cursor.fetchall()
 
