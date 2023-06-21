@@ -124,10 +124,6 @@ class RegisterWindow(QDialog):
         )
         cursor = connection.cursor()
 
-        if not eposta.endswith("@gmail.com"):
-         QMessageBox.warning(self, "Hata", "Geçersiz e-posta adresi! E-posta adresi @gmail.com ile bitmelidir.")
-         return
-
         query = "INSERT INTO kullanici (eposta, sifre, rol) VALUES (%s, %s, %s)"
         params = (eposta, password, role)
         cursor.execute(query, params)
